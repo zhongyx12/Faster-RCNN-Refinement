@@ -161,3 +161,4 @@ if __name__ == '__main__':
 
     # evaluation
     test_net(save_name, net, imdb, max_per_image, thresh=thresh, vis=vis)
+
