@@ -70,11 +70,13 @@ data_layer = RoIDataLayer(roidb, imdb.num_classes)
 
 # load net
 net = FasterRCNN(classes=imdb.classes, debug=_DEBUG)
-network.weights_normal_init(net, dev=0.01)
-network.load_pretrained_npy(net, pretrained_model)
-# model_file = '/media/longc/Data/models/VGGnet_fast_rcnn_iter_70000.h5'
-# model_file = 'models/saved_model3/faster_rcnn_60000.h5'
-# network.load_net(model_file, net)
+
+# network.weights_normal_init(net, dev=0.01)
+# network.load_pretrained_npy(net, pretrained_model)
+
+model_file = 'models/demo/VGGnet_fast_rcnn_iter_70000.h5'
+network.load_net(model_file, net)
+print('load model successfully!')
 # exp_name = 'vgg16_02-19_13-24'
 # start_step = 60001
 # lr /= 10.
