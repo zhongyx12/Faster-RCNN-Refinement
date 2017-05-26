@@ -19,6 +19,7 @@ from network import Conv2d, FC
 from roi_pooling.modules.roi_pool import RoIPool
 from vgg16 import VGG16
 
+MAX_ITER = 2
 
 def nms_detections(pred_boxes, scores, nms_thresh, inds=None):
     dets = np.hstack((pred_boxes,
@@ -211,17 +212,18 @@ class FasterRCNN(nn.Module):
         # print self.rpn.loss_box
         return self.cross_entropy + self.loss_box * 10
 
-    def forward(self, im_data, im_info, gt_boxes=None, gt_ishard=None, dontcare_areas=None):
-        MAX_ITER = 2
-        for it in range(MAX_ITER):
-            if it == 0:
+    def forward(self, im_data, im_info, gt_boxes=None, gt_ishard=None, dontcare_areas=None, 
+        prev_cls_prob=None, prev_bbox_pred=None, prev_roi=None, use_last_loss_only=False):
+        if self.training and not use_last_loss_only:
+            if prev_roi is None:
                 features, rois = self.rpn(im_data, im_info, gt_boxes, gt_ishard, dontcare_areas)
-            else:
-                boxes = rois.data.cpu().numpy()[:, 1:5] / im_info[0][2]
-                box_deltas = bbox_pred.data.cpu().numpy()
+            elif self.training:
+                features, _ = self.rpn(im_data, im_info, gt_boxes, gt_ishard, dontcare_areas)
+                boxes = prev_roi.data.cpu().numpy()[:, 1:5] / im_info[0][2]
+                box_deltas = prev_bbox_pred.data.cpu().numpy()
                 pred_boxes = bbox_transform_inv(boxes, box_deltas)
                 pred_boxes = clip_boxes(pred_boxes, (im_info[0][0], im_info[0][1]))
-                _, ind = torch.max(cls_prob, 1)
+                _, ind = torch.max(prev_cls_prob, 1)
                 ind = ind * 4
                 inds = torch.cat((ind, ind + 1, ind + 2, ind + 3), 1)
                 inds = inds.t()
@@ -230,31 +232,9 @@ class FasterRCNN(nn.Module):
                 new_boxes = new_boxes * im_info[0][2]
                 new_rois = np.concatenate((np.zeros((new_boxes.shape[0], 1)), new_boxes), 1)
                 rois = network.np_to_variable(new_rois, is_cuda=True)
-                '''
-                boxes = rois.data.cpu().numpy()[:, 1:5] / im_info[0][2]
-                box_deltas = bbox_pred.data.cpu().numpy()
-                pred_boxes = bbox_transform_inv(boxes, box_deltas)
-                pred_boxes = clip_boxes(pred_boxes, (im_info[0][0], im_info[0][1]))
-                prob = cls_prob.data.cpu().numpy()
-                can_boxes = None
-                for j in xrange(1, prob.shape[1]):
-                    inds = np.where(prob[:, j] > 0.05)[0]
-                    new_boxes = pred_boxes[inds, j * 4:(j + 1) * 4]
-                    if new_boxes.shape[0] != 0:
-                        if can_boxes == None:
-                            can_boxes = new_boxes
-                        else:
-                            can_boxes = np.concatenate((can_boxes, new_boxes), axis=0)
-                if can_boxes == None:
-                    return cls_prob, bbox_pred, rois
-                can_boxes = can_boxes * im_info[0][2]
-                new_rois = np.concatenate((np.zeros((can_boxes.shape[0], 1)), can_boxes), 1)
-                rois = network.np_to_variable(new_rois, is_cuda=True)
-                '''
 
-            if self.training:
-                roi_data = self.proposal_target_layer(rois, gt_boxes, gt_ishard, dontcare_areas, self.n_classes)
-                rois = roi_data[0]
+            roi_data = self.proposal_target_layer(rois, gt_boxes, gt_ishard, dontcare_areas, self.n_classes)
+            rois = roi_data[0]
 
             # roi pool
             pooled_features = self.roi_pool(features, rois)
@@ -268,9 +248,46 @@ class FasterRCNN(nn.Module):
             cls_prob = F.softmax(cls_score)
             bbox_pred = self.bbox_fc(x)
 
-            if self.training:
-                self.cross_entropy, self.loss_box = self.build_loss(cls_score, bbox_pred, roi_data)
-        
+            self.cross_entropy, self.loss_box = self.build_loss(cls_score, bbox_pred, roi_data)
+       
+        else:
+            for it in range(MAX_ITER):
+                if it == 0:
+                    features, rois = self.rpn(im_data, im_info, gt_boxes, gt_ishard, dontcare_areas)
+                else:
+                    boxes = rois.data.cpu().numpy()[:, 1:5] / im_info[0][2]
+                    box_deltas = bbox_pred.data.cpu().numpy()
+                    pred_boxes = bbox_transform_inv(boxes, box_deltas)
+                    pred_boxes = clip_boxes(pred_boxes, (im_info[0][0], im_info[0][1]))
+                    _, ind = torch.max(cls_prob, 1)
+                    ind = ind * 4
+                    inds = torch.cat((ind, ind + 1, ind + 2, ind + 3), 1)
+                    inds = inds.t()
+                    inds = inds.data.cpu().numpy()
+                    new_boxes = np.transpose(pred_boxes[np.arange(pred_boxes.shape[0]), inds])
+                    new_boxes = new_boxes * im_info[0][2]
+                    new_rois = np.concatenate((np.zeros((new_boxes.shape[0], 1)), new_boxes), 1)
+                    rois = network.np_to_variable(new_rois, is_cuda=True)
+
+                if self.training:
+                    roi_data = self.proposal_target_layer(rois, gt_boxes, gt_ishard, dontcare_areas, self.n_classes)
+                    rois = roi_data[0]
+
+                # roi pool
+                pooled_features = self.roi_pool(features, rois)
+                x = pooled_features.view(pooled_features.size()[0], -1)
+                x = self.fc6(x)
+                x = F.dropout(x, training=self.training)
+                x = self.fc7(x)
+                x = F.dropout(x, training=self.training)
+
+                cls_score = self.score_fc(x)
+                cls_prob = F.softmax(cls_score)
+                bbox_pred = self.bbox_fc(x)
+                
+                if self.training:
+                    self.cross_entropy, self.loss_box = self.build_loss(cls_score, bbox_pred, roi_data)
+
         return cls_prob, bbox_pred, rois
 
     def build_loss(self, cls_score, bbox_pred, roi_data):
