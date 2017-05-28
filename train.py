@@ -29,18 +29,18 @@ def log_print(text, color=None, on_color=None, attrs=None):
     else:
         print(text)
 
-MAX_ITER = 2
+MAX_ITER = 1
 
 # hyper-parameters
 # ------------
 imdb_name = 'voc_2007_trainval'
 cfg_file = 'experiments/cfgs/faster_rcnn_end2end.yml'
 pretrained_model = 'data/pretrained_model/VGG_imagenet.npy'
-output_dir = 'models/saved_model4'
+output_dir = 'models/saved_model6'
 
 start_step = 0
 end_step = 100000
-lr_decay_steps = {60000, 80000}
+lr_decay_steps = {50000, 80000}
 lr_decay = 1./10
 
 rand_seed = 1024
