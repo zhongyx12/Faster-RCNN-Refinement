@@ -196,7 +196,9 @@ class FasterRCNN(nn.Module):
         self.fc7 = FC(4096, 4096)
         self.score_fc = FC(4096, self.n_classes, relu=False)
         self.bbox_fc = FC(4096, self.n_classes * 4, relu=False)
-        self.lstm = nn.LSTM(4096, 4096, 1)
+        self.lstm = nn.LSTM(4096, 1024, 1)
+        self.score_RNN_fc = FC(1024, self.n_classes, relu=False)
+        self.bbox_RNN_fc = FC(1024, self.n_classes * 4, relu=False)
 
         # loss
         self.cross_entropy = None
@@ -255,9 +257,9 @@ class FasterRCNN(nn.Module):
                 x, hiddens = self.lstm(x, hiddens)
                 x = torch.squeeze(x, 0)
 
-                cls_score = self.score_fc(x)
+                cls_score = self.score_RNN_fc(x)
                 cls_prob = F.softmax(cls_score)
-                bbox_pred = self.bbox_fc(x)
+                bbox_pred = self.bbox_RNN_fc(x)
                 
                 if self.training:
                     if (not use_last_loss_only) or it == max_iter - 1:
