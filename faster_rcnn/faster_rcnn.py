@@ -222,8 +222,10 @@ class FasterRCNN(nn.Module):
             self.cross_entropy, self.loss_box = Variable(torch.zeros(1)).cuda(), Variable(torch.zeros(1)).cuda()
             for it in range(max_iter):
                 if it == 0:
+                    old_rois = None
                     features, rois = self.rpn(im_data, im_info, gt_boxes, gt_ishard, dontcare_areas)
                 else:
+                    old_rois = rois
                     boxes = rois.data.cpu().numpy()[:, 1:5] / im_info[0][2]
                     box_deltas = bbox_pred.data.cpu().numpy()
                     pred_boxes = bbox_transform_inv(boxes, box_deltas)
@@ -238,12 +240,11 @@ class FasterRCNN(nn.Module):
                     new_rois = np.concatenate((np.zeros((new_boxes.shape[0], 1)), new_boxes), 1)
                     rois = network.np_to_variable(new_rois, is_cuda=True)
 
-                print(it)
-                print(rois.size())
                 if self.training:
                     roi_data = self.proposal_target_layer(rois, gt_boxes, gt_ishard, dontcare_areas, self.n_classes)
                     rois = roi_data[0]
-                print(rois.size())
+                if old_rois != None and old_rois.size() != rois.size():
+                    return cls_prob, bbox_pred, old_rois
 
                 # roi pool
                 pooled_features = self.roi_pool(features, rois)
