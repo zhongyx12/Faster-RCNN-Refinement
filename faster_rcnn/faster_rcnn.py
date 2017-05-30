@@ -227,7 +227,10 @@ class FasterRCNN(nn.Module):
                     boxes = rois.data.cpu().numpy()[:, 1:5] / im_info[0][2]
                     box_deltas = bbox_pred.data.cpu().numpy()
                     pred_boxes = bbox_transform_inv(boxes, box_deltas)
+                    print(it)
+                    print(pred_boxes.shape)
                     pred_boxes = clip_boxes(pred_boxes, (im_info[0][0], im_info[0][1]))
+                    print(pred_boxes.shape)
                     _, ind = torch.max(cls_prob, 1)
                     ind = ind * 4
                     inds = torch.cat((ind, ind + 1, ind + 2, ind + 3), 1)
@@ -243,10 +246,7 @@ class FasterRCNN(nn.Module):
                     rois = roi_data[0]
 
                 # roi pool
-                print(it)
-                print(rois.size(0))
                 pooled_features = self.roi_pool(features, rois)
-                print(pooled_features.size(0))
                 x = pooled_features.view(pooled_features.size()[0], -1)
                 x = self.fc6(x)
                 x = F.dropout(x, training=self.training)
