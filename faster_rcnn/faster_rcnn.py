@@ -239,6 +239,12 @@ class FasterRCNN(nn.Module):
                     new_rois = np.concatenate((np.zeros((new_boxes.shape[0], 1)), new_boxes), 1)
                     rois = network.np_to_variable(new_rois, is_cuda=True)
 
+                print(it)
+                print(type(hiddens[0]))
+                print(hiddens[0].size())
+                print(type(hiddens[1]))
+                print(hiddens[1].size())
+
                 if self.training:
                     roi_data = self.proposal_target_layer(rois, gt_boxes, gt_ishard, dontcare_areas, self.n_classes)
                     rois = roi_data[0]
