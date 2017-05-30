@@ -243,6 +243,8 @@ class FasterRCNN(nn.Module):
                 if self.training:
                     roi_data = self.proposal_target_layer(rois, gt_boxes, gt_ishard, dontcare_areas, self.n_classes)
                     rois = roi_data[0]
+                print(old_rois)
+                print(rois)
                 if old_rois != None and old_rois.size(0) != rois.size(0):
                     return cls_prob, bbox_pred, old_rois
 
