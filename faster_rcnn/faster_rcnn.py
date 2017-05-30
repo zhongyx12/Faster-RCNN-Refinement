@@ -197,8 +197,6 @@ class FasterRCNN(nn.Module):
         self.score_fc = FC(4096, self.n_classes, relu=False)
         self.bbox_fc = FC(4096, self.n_classes * 4, relu=False)
         self.lstm = nn.LSTM(4096, 4096, 1)
-        self.h0 = nn.Parameter(torch.zeros(1, 1, 4096).float(), requires_grad=True)
-        self.c0 = nn.Parameter(torch.zeros(1, 1, 4096).float(), requires_grad=True)
 
         # loss
         self.cross_entropy = None
@@ -219,12 +217,12 @@ class FasterRCNN(nn.Module):
         prev_cls_prob=None, prev_bbox_pred=None, prev_roi=None, use_last_loss_only=False, 
         use_RNN_model=False, max_iter=1):
         if use_RNN_model:
-            self.cross_entropy, self.loss_box = Variable(torch.zeros(1).float()), Variable(torch.zeros(1).float())
+            self.cross_entropy, self.loss_box = Variable(torch.zeros(1)), Variable(torch.zeros(1))
             for it in range(max_iter):
                 if it == 0:
                     features, rois = self.rpn(im_data, im_info, gt_boxes, gt_ishard, dontcare_areas)
-                    prev_h = self.h0.expand(self.h0.size()[0], rois.size()[0], self.h0.size()[2])
-                    prev_c = self.c0.expand(self.c0.size()[0], rois.size()[0], self.c0.size()[2])
+                    prev_h = Variable(torch.zeros(1, rois.size()[0], 4096), requires_grad=False)
+                    prev_c = Variable(torch.zeros(1, rois.size()[0], 4096), requires_grad=False)
                     hiddens = (prev_h, prev_c)
                 else:
                     boxes = rois.data.cpu().numpy()[:, 1:5] / im_info[0][2]
