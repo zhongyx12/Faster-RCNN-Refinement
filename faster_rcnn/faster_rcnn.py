@@ -243,7 +243,10 @@ class FasterRCNN(nn.Module):
                     rois = roi_data[0]
 
                 # roi pool
+                print(it)
+                print(rois.size(0))
                 pooled_features = self.roi_pool(features, rois)
+                print(pooled_features.size(0))
                 x = pooled_features.view(pooled_features.size()[0], -1)
                 x = self.fc6(x)
                 x = F.dropout(x, training=self.training)
