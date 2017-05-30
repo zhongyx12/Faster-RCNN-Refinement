@@ -222,6 +222,7 @@ class FasterRCNN(nn.Module):
             self.cross_entropy, self.loss_box = Variable(torch.zeros(1)).cuda(), Variable(torch.zeros(1)).cuda()
             for it in range(max_iter):
                 if it == 0:
+                    old_rois = None
                     features, rois = self.rpn(im_data, im_info, gt_boxes, gt_ishard, dontcare_areas)
                 else:
                     old_rois = rois
