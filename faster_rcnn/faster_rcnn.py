@@ -224,6 +224,7 @@ class FasterRCNN(nn.Module):
                     prev_h = Variable(torch.zeros(1, rois.size(0), 4096), requires_grad=False).cuda()
                     prev_c = Variable(torch.zeros(1, rois.size(0), 4096), requires_grad=False).cuda()
                     hiddens = (prev_h, prev_c)
+                    print(rois.size())
                 else:
                     boxes = rois.data.cpu().numpy()[:, 1:5] / im_info[0][2]
                     box_deltas = bbox_pred.data.cpu().numpy()
