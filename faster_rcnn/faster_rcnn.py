@@ -217,7 +217,7 @@ class FasterRCNN(nn.Module):
         prev_cls_prob=None, prev_bbox_pred=None, prev_roi=None, use_last_loss_only=False, 
         use_RNN_model=False, max_iter=1):
         if use_RNN_model:
-            self.cross_entropy, self.loss_box = Variable(torch.zeros(1)), Variable(torch.zeros(1))
+            self.cross_entropy, self.loss_box = Variable(torch.zeros(1)).cuda(), Variable(torch.zeros(1)).cuda()
             for it in range(max_iter):
                 if it == 0:
                     features, rois = self.rpn(im_data, im_info, gt_boxes, gt_ishard, dontcare_areas)
