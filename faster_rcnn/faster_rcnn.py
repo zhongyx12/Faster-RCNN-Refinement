@@ -248,6 +248,7 @@ class FasterRCNN(nn.Module):
                 x = self.fc7(x)
                 x = F.dropout(x, training=self.training)
                 x = torch.unsqueeze(x, 0)
+                print(rois.size(0))
                 if it == 0:
                     prev_h = Variable(torch.zeros(1, x.size(1), 4096), requires_grad=False).cuda()
                     prev_c = Variable(torch.zeros(1, x.size(1), 4096), requires_grad=False).cuda()
