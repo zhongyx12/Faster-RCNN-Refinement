@@ -227,10 +227,7 @@ class FasterRCNN(nn.Module):
                     boxes = rois.data.cpu().numpy()[:, 1:5] / im_info[0][2]
                     box_deltas = bbox_pred.data.cpu().numpy()
                     pred_boxes = bbox_transform_inv(boxes, box_deltas)
-                    print(it)
-                    print(pred_boxes.shape)
                     pred_boxes = clip_boxes(pred_boxes, (im_info[0][0], im_info[0][1]))
-                    print(pred_boxes.shape)
                     _, ind = torch.max(cls_prob, 1)
                     ind = ind * 4
                     inds = torch.cat((ind, ind + 1, ind + 2, ind + 3), 1)
@@ -241,9 +238,12 @@ class FasterRCNN(nn.Module):
                     new_rois = np.concatenate((np.zeros((new_boxes.shape[0], 1)), new_boxes), 1)
                     rois = network.np_to_variable(new_rois, is_cuda=True)
 
+                print(it)
+                print(rois.size())
                 if self.training:
                     roi_data = self.proposal_target_layer(rois, gt_boxes, gt_ishard, dontcare_areas, self.n_classes)
                     rois = roi_data[0]
+                print(rois.size())
 
                 # roi pool
                 pooled_features = self.roi_pool(features, rois)
