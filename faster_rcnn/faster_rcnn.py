@@ -222,7 +222,6 @@ class FasterRCNN(nn.Module):
             self.cross_entropy, self.loss_box = Variable(torch.zeros(1)).cuda(), Variable(torch.zeros(1)).cuda()
             for it in range(max_iter):
                 if it == 0:
-                    old_rois = None
                     features, rois = self.rpn(im_data, im_info, gt_boxes, gt_ishard, dontcare_areas)
                 else:
                     old_rois = rois
@@ -245,7 +244,7 @@ class FasterRCNN(nn.Module):
                     rois = roi_data[0]
                 print(old_rois)
                 print(rois)
-                if old_rois != None and old_rois.size(0) != rois.size(0):
+                if it != 0 and old_rois.size(0) != rois.size(0):
                     return cls_prob, bbox_pred, old_rois
 
                 # roi pool
