@@ -221,8 +221,8 @@ class FasterRCNN(nn.Module):
             for it in range(max_iter):
                 if it == 0:
                     features, rois = self.rpn(im_data, im_info, gt_boxes, gt_ishard, dontcare_areas)
-                    prev_h = Variable(torch.zeros(1, rois.size()[0], 4096), requires_grad=False)
-                    prev_c = Variable(torch.zeros(1, rois.size()[0], 4096), requires_grad=False)
+                    prev_h = Variable(torch.FloatTensor(torch.zeros(1, rois.size()[0], 4096)), requires_grad=False)
+                    prev_c = Variable(torch.FloatTensor(torch.zeros(1, rois.size()[0], 4096)), requires_grad=False)
                     hiddens = (prev_h, prev_c)
                 else:
                     boxes = rois.data.cpu().numpy()[:, 1:5] / im_info[0][2]
@@ -238,12 +238,6 @@ class FasterRCNN(nn.Module):
                     new_boxes = new_boxes * im_info[0][2]
                     new_rois = np.concatenate((np.zeros((new_boxes.shape[0], 1)), new_boxes), 1)
                     rois = network.np_to_variable(new_rois, is_cuda=True)
-
-                print(it)
-                print(type(hiddens[0]))
-                print(hiddens[0].size())
-                print(type(hiddens[1]))
-                print(hiddens[1].size())
 
                 if self.training:
                     roi_data = self.proposal_target_layer(rois, gt_boxes, gt_ishard, dontcare_areas, self.n_classes)
