@@ -88,8 +88,6 @@ net.train()
 params = list(net.parameters())
 # optimizer = torch.optim.Adam(params[-8:], lr=lr)
 # optimizer = torch.optim.SGD(params[8:], lr=lr, momentum=momentum, weight_decay=weight_decay)
-for k in net.state_dict():
-    print(k)
 optimizer = torch.optim.SGD(params[32:], lr=lr, momentum=momentum, weight_decay=weight_decay)
 
 if not os.path.exists(output_dir):
