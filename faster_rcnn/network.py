@@ -118,5 +118,5 @@ def clip_gradient(model, clip_norm):
 
     norm = clip_norm / max(totalnorm, clip_norm)
     for p in model.parameters():
-        if p.requires_grad:
+        if p.requires_grad and p.grad:
             p.grad.mul_(norm)
