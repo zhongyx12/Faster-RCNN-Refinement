@@ -221,8 +221,8 @@ class FasterRCNN(nn.Module):
             for it in range(max_iter):
                 if it == 0:
                     features, rois = self.rpn(im_data, im_info, gt_boxes, gt_ishard, dontcare_areas)
-                    prev_h = Variable(torch.FloatTensor(torch.zeros(1, rois.size()[0], 4096)), requires_grad=False)
-                    prev_c = Variable(torch.FloatTensor(torch.zeros(1, rois.size()[0], 4096)), requires_grad=False)
+                    prev_h = Variable(torch.zeros(1, rois.size(0), 4096), requires_grad=False).cuda()
+                    prev_c = Variable(torch.zeros(1, rois.size(0), 4096), requires_grad=False).cuda()
                     hiddens = (prev_h, prev_c)
                 else:
                     boxes = rois.data.cpu().numpy()[:, 1:5] / im_info[0][2]
