@@ -251,8 +251,8 @@ class FasterRCNN(nn.Module):
                 x = F.dropout(x, training=self.training)
                 x = torch.unsqueeze(x, 0)
                 if it == 0:
-                    prev_h = Variable(torch.zeros(1, rois.size(0), 4096), requires_grad=False).cuda()
-                    prev_c = Variable(torch.zeros(1, rois.size(0), 4096), requires_grad=False).cuda()
+                    prev_h = Variable(torch.zeros(1, rois.size(0), 1024), requires_grad=False).cuda()
+                    prev_c = Variable(torch.zeros(1, rois.size(0), 1024), requires_grad=False).cuda()
                     hiddens = (prev_h, prev_c)
                 x, hiddens = self.lstm(x, hiddens)
                 x = torch.squeeze(x, 0)
