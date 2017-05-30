@@ -196,6 +196,9 @@ class FasterRCNN(nn.Module):
         self.fc7 = FC(4096, 4096)
         self.score_fc = FC(4096, self.n_classes, relu=False)
         self.bbox_fc = FC(4096, self.n_classes * 4, relu=False)
+        self.lstm = nn.LSTM(4096, 4096, 1)
+        self.h0 = nn.Parameter(torch.zeros(1, 1, 4096), requires_grad=True)
+        self.c0 = nn.Parameter(torch.zeros(1, 1, 4096), requires_grad=True)
 
         # loss
         self.cross_entropy = None
@@ -213,47 +216,16 @@ class FasterRCNN(nn.Module):
         return self.cross_entropy + self.loss_box * 10
 
     def forward(self, im_data, im_info, gt_boxes=None, gt_ishard=None, dontcare_areas=None, 
-        prev_cls_prob=None, prev_bbox_pred=None, prev_roi=None, use_last_loss_only=False):
-        if self.training and not use_last_loss_only:
-            if prev_roi is None:
-                features, rois = self.rpn(im_data, im_info, gt_boxes, gt_ishard, dontcare_areas)
-            elif self.training:
-                features, _ = self.rpn(im_data, im_info, gt_boxes, gt_ishard, dontcare_areas)
-                boxes = prev_roi.data.cpu().numpy()[:, 1:5] / im_info[0][2]
-                box_deltas = prev_bbox_pred.data.cpu().numpy()
-                pred_boxes = bbox_transform_inv(boxes, box_deltas)
-                pred_boxes = clip_boxes(pred_boxes, (im_info[0][0], im_info[0][1]))
-                _, ind = torch.max(prev_cls_prob, 1)
-                ind = ind * 4
-                inds = torch.cat((ind, ind + 1, ind + 2, ind + 3), 1)
-                inds = inds.t()
-                inds = inds.data.cpu().numpy()
-                new_boxes = np.transpose(pred_boxes[np.arange(pred_boxes.shape[0]), inds])
-                new_boxes = new_boxes * im_info[0][2]
-                new_rois = np.concatenate((np.zeros((new_boxes.shape[0], 1)), new_boxes), 1)
-                rois = network.np_to_variable(new_rois, is_cuda=True)
-
-            roi_data = self.proposal_target_layer(rois, gt_boxes, gt_ishard, dontcare_areas, self.n_classes)
-            rois = roi_data[0]
-
-            # roi pool
-            pooled_features = self.roi_pool(features, rois)
-            x = pooled_features.view(pooled_features.size()[0], -1)
-            x = self.fc6(x)
-            x = F.dropout(x, training=self.training)
-            x = self.fc7(x)
-            x = F.dropout(x, training=self.training)
-
-            cls_score = self.score_fc(x)
-            cls_prob = F.softmax(cls_score)
-            bbox_pred = self.bbox_fc(x)
-
-            self.cross_entropy, self.loss_box = self.build_loss(cls_score, bbox_pred, roi_data)
-       
-        else:
-            for it in range(MAX_ITER):
+        prev_cls_prob=None, prev_bbox_pred=None, prev_roi=None, use_last_loss_only=False, 
+        use_RNN_model=False, max_iter=1):
+        if use_RNN_model:
+            self.cross_entropy, self.loss_box = Variable(torch.zeros(1)), Variable(torch.zeros(1))
+            for it in range(max_iter):
                 if it == 0:
                     features, rois = self.rpn(im_data, im_info, gt_boxes, gt_ishard, dontcare_areas)
+                    prev_h = self.h0.expand(self.h0.size()[0], rois.size()[0], self.h0.size()[2])
+                    prev_c = self.c0.expand(self.c0.size()[0], rois.size()[0], self.c0.size()[2])
+                    hiddens = (prev_h, prev_c)
                 else:
                     boxes = rois.data.cpu().numpy()[:, 1:5] / im_info[0][2]
                     box_deltas = bbox_pred.data.cpu().numpy()
@@ -280,13 +252,95 @@ class FasterRCNN(nn.Module):
                 x = F.dropout(x, training=self.training)
                 x = self.fc7(x)
                 x = F.dropout(x, training=self.training)
+                x = torch.unsqueeze(x, 0)
+                x, hiddens = self.lstm(x, hiddens)
+                x = torch.squeeze(x, 0)
 
                 cls_score = self.score_fc(x)
                 cls_prob = F.softmax(cls_score)
                 bbox_pred = self.bbox_fc(x)
                 
                 if self.training:
-                    self.cross_entropy, self.loss_box = self.build_loss(cls_score, bbox_pred, roi_data)
+                    if (not use_last_loss_only) or it == max_iter - 1:
+                        cur_cross_entropy, cur_loss_box = self.build_loss(cls_score, bbox_pred, roi_data)
+                        self.cross_entropy += cur_cross_entropy
+                        self.loss_box = cur_loss_box
+        
+        # Vanilla interative model below
+        else:
+            if self.training and not use_last_loss_only:
+                if prev_roi is None:
+                    features, rois = self.rpn(im_data, im_info, gt_boxes, gt_ishard, dontcare_areas)
+                elif self.training:
+                    features, _ = self.rpn(im_data, im_info, gt_boxes, gt_ishard, dontcare_areas)
+                    boxes = prev_roi.data.cpu().numpy()[:, 1:5] / im_info[0][2]
+                    box_deltas = prev_bbox_pred.data.cpu().numpy()
+                    pred_boxes = bbox_transform_inv(boxes, box_deltas)
+                    pred_boxes = clip_boxes(pred_boxes, (im_info[0][0], im_info[0][1]))
+                    _, ind = torch.max(prev_cls_prob, 1)
+                    ind = ind * 4
+                    inds = torch.cat((ind, ind + 1, ind + 2, ind + 3), 1)
+                    inds = inds.t()
+                    inds = inds.data.cpu().numpy()
+                    new_boxes = np.transpose(pred_boxes[np.arange(pred_boxes.shape[0]), inds])
+                    new_boxes = new_boxes * im_info[0][2]
+                    new_rois = np.concatenate((np.zeros((new_boxes.shape[0], 1)), new_boxes), 1)
+                    rois = network.np_to_variable(new_rois, is_cuda=True)
+
+                roi_data = self.proposal_target_layer(rois, gt_boxes, gt_ishard, dontcare_areas, self.n_classes)
+                rois = roi_data[0]
+
+                # roi pool
+                pooled_features = self.roi_pool(features, rois)
+                x = pooled_features.view(pooled_features.size()[0], -1)
+                x = self.fc6(x)
+                x = F.dropout(x, training=self.training)
+                x = self.fc7(x)
+                x = F.dropout(x, training=self.training)
+
+                cls_score = self.score_fc(x)
+                cls_prob = F.softmax(cls_score)
+                bbox_pred = self.bbox_fc(x)
+
+                self.cross_entropy, self.loss_box = self.build_loss(cls_score, bbox_pred, roi_data)
+           
+            else:
+                for it in range(MAX_ITER):
+                    if it == 0:
+                        features, rois = self.rpn(im_data, im_info, gt_boxes, gt_ishard, dontcare_areas)
+                    else:
+                        boxes = rois.data.cpu().numpy()[:, 1:5] / im_info[0][2]
+                        box_deltas = bbox_pred.data.cpu().numpy()
+                        pred_boxes = bbox_transform_inv(boxes, box_deltas)
+                        pred_boxes = clip_boxes(pred_boxes, (im_info[0][0], im_info[0][1]))
+                        _, ind = torch.max(cls_prob, 1)
+                        ind = ind * 4
+                        inds = torch.cat((ind, ind + 1, ind + 2, ind + 3), 1)
+                        inds = inds.t()
+                        inds = inds.data.cpu().numpy()
+                        new_boxes = np.transpose(pred_boxes[np.arange(pred_boxes.shape[0]), inds])
+                        new_boxes = new_boxes * im_info[0][2]
+                        new_rois = np.concatenate((np.zeros((new_boxes.shape[0], 1)), new_boxes), 1)
+                        rois = network.np_to_variable(new_rois, is_cuda=True)
+
+                    if self.training:
+                        roi_data = self.proposal_target_layer(rois, gt_boxes, gt_ishard, dontcare_areas, self.n_classes)
+                        rois = roi_data[0]
+
+                    # roi pool
+                    pooled_features = self.roi_pool(features, rois)
+                    x = pooled_features.view(pooled_features.size()[0], -1)
+                    x = self.fc6(x)
+                    x = F.dropout(x, training=self.training)
+                    x = self.fc7(x)
+                    x = F.dropout(x, training=self.training)
+
+                    cls_score = self.score_fc(x)
+                    cls_prob = F.softmax(cls_score)
+                    bbox_pred = self.bbox_fc(x)
+                    
+                    if self.training:
+                        self.cross_entropy, self.loss_box = self.build_loss(cls_score, bbox_pred, roi_data)
 
         return cls_prob, bbox_pred, rois
 

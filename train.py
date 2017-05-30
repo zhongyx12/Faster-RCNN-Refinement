@@ -36,7 +36,7 @@ MAX_ITER = 1
 imdb_name = 'voc_2007_trainval'
 cfg_file = 'experiments/cfgs/faster_rcnn_end2end.yml'
 pretrained_model = 'data/pretrained_model/VGG_imagenet.npy'
-output_dir = 'models/saved_model6'
+output_dir = 'models/saved_model_RNN'
 
 start_step = 0
 end_step = 100000
@@ -87,7 +87,8 @@ net.train()
 
 params = list(net.parameters())
 # optimizer = torch.optim.Adam(params[-8:], lr=lr)
-optimizer = torch.optim.SGD(params[8:], lr=lr, momentum=momentum, weight_decay=weight_decay)
+# optimizer = torch.optim.SGD(params[8:], lr=lr, momentum=momentum, weight_decay=weight_decay)
+optimizer = torch.optim.SGD(params[32:], lr=lr, momentum=momentum, weight_decay=weight_decay)
 
 if not os.path.exists(output_dir):
     os.mkdir(output_dir)
@@ -113,6 +114,8 @@ t = Timer()
 t.tic()
 
 use_last_loss_only = False
+use_RNN_model = True
+max_iter = 3
 
 for step in range(start_step, end_step+1):
 
@@ -128,11 +131,12 @@ for step in range(start_step, end_step+1):
     prev_cls_prob = None
     prev_bbox_pred = None
 
-    if use_last_loss_only:
+    if use_RNN_model:
         # forward
         prev_cls_prob, prev_bbox_pred, prev_rois = net(im_data, im_info, gt_boxes, gt_ishard, 
-            dontcare_areas, prev_cls_prob, prev_bbox_pred, prev_rois, use_last_loss_only)
-        loss = net.loss + net.rpn.loss
+            dontcare_areas, prev_cls_prob, prev_bbox_pred, prev_rois, use_last_loss_only,
+            use_RNN_model, max_iter)
+        loss = net.loss
 
         if _DEBUG:
             tp += float(net.tp)
@@ -145,11 +149,13 @@ for step in range(start_step, end_step+1):
         loss.backward()
         network.clip_gradient(net, 10.)
         optimizer.step()
+
+    # Vanilla iterative model
     else:
-        for it in range(MAX_ITER):
+        if use_last_loss_only:
             # forward
             prev_cls_prob, prev_bbox_pred, prev_rois = net(im_data, im_info, gt_boxes, gt_ishard, 
-                dontcare_areas, prev_cls_prob, prev_bbox_pred, prev_rois)
+                dontcare_areas, prev_cls_prob, prev_bbox_pred, prev_rois, use_last_loss_only)
             loss = net.loss + net.rpn.loss
 
             if _DEBUG:
@@ -163,6 +169,24 @@ for step in range(start_step, end_step+1):
             loss.backward()
             network.clip_gradient(net, 10.)
             optimizer.step()
+        else:
+            for it in range(MAX_ITER):
+                # forward
+                prev_cls_prob, prev_bbox_pred, prev_rois = net(im_data, im_info, gt_boxes, gt_ishard, 
+                    dontcare_areas, prev_cls_prob, prev_bbox_pred, prev_rois)
+                loss = net.loss + net.rpn.loss
+
+                if _DEBUG:
+                    tp += float(net.tp)
+                    tf += float(net.tf)
+                    fg += net.fg_cnt
+                    bg += net.bg_cnt
+
+                # backward
+                optimizer.zero_grad()
+                loss.backward()
+                network.clip_gradient(net, 10.)
+                optimizer.step()
 
     train_loss += loss.data[0]
     step_cnt += 1
@@ -201,7 +225,8 @@ for step in range(start_step, end_step+1):
         print('save model: {}'.format(save_name))
     if step in lr_decay_steps:
         lr *= lr_decay
-        optimizer = torch.optim.SGD(params[8:], lr=lr, momentum=momentum, weight_decay=weight_decay)
+        # optimizer = torch.optim.SGD(params[8:], lr=lr, momentum=momentum, weight_decay=weight_decay)
+        optimizer = torch.optim.SGD(params[32:], lr=lr, momentum=momentum, weight_decay=weight_decay)
 
     if re_cnt:
         tp, tf, fg, bg = 0., 0., 0, 0
