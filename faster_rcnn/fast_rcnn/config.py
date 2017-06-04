@@ -51,8 +51,8 @@ __C.TRAIN.SOLVER = 'Momentum'
 # learning rate
 __C.TRAIN.WEIGHT_DECAY = 0.0005
 # __C.TRAIN.LEARNING_RATE = 0.0000001 # start from 80000.h5
-__C.TRAIN.LEARNING_RATE = 0.000001 # start from 60000.h5
-# __C.TRAIN.LEARNING_RATE = 0.00001 # start from demo.h5
+#__C.TRAIN.LEARNING_RATE = 0.000001 # start from 60000.h5
+ __C.TRAIN.LEARNING_RATE = 0.00001 # start from demo.h5
 # __C.TRAIN.LEARNING_RATE = 0.001 # original
 __C.TRAIN.MOMENTUM = 0.9
 __C.TRAIN.GAMMA = 0.1

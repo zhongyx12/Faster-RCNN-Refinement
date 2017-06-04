@@ -36,7 +36,7 @@ MAX_ITER = 1
 imdb_name = 'voc_2007_trainval'
 cfg_file = 'experiments/cfgs/faster_rcnn_end2end.yml'
 pretrained_model = 'data/pretrained_model/VGG_imagenet.npy'
-output_dir = 'models/saved_model_RNN'
+output_dir = 'models/saved_model_RNN_2_lr1_8_58_div2_rpn'
 
 start_step = 0
 end_step = 100000
@@ -88,7 +88,7 @@ net.train()
 params = list(net.parameters())
 # optimizer = torch.optim.Adam(params[-8:], lr=lr)
 # optimizer = torch.optim.SGD(params[8:], lr=lr, momentum=momentum, weight_decay=weight_decay)
-optimizer = torch.optim.SGD(params[32:36] + params[40:], lr=lr, momentum=momentum, weight_decay=weight_decay)
+optimizer = torch.optim.SGD(params[8:36] + params[40:], lr=lr, momentum=momentum, weight_decay=weight_decay)
 
 if not os.path.exists(output_dir):
     os.mkdir(output_dir)
@@ -115,7 +115,7 @@ t.tic()
 
 use_last_loss_only = False
 use_RNN_model = True
-max_iter = 3
+max_iter = 2
 
 for step in range(start_step, end_step+1):
 
@@ -156,7 +156,7 @@ for step in range(start_step, end_step+1):
             # forward
             prev_cls_prob, prev_bbox_pred, prev_rois = net(im_data, im_info, gt_boxes, gt_ishard, 
                 dontcare_areas, prev_cls_prob, prev_bbox_pred, prev_rois, use_last_loss_only)
-            loss = net.loss + net.rpn.loss
+            loss = net.loss / 2. + net.rpn.loss
 
             if _DEBUG:
                 tp += float(net.tp)
@@ -219,14 +219,14 @@ for step in range(start_step, end_step+1):
                       'rcnn_box': float(net.loss_box.data.cpu().numpy()[0])}
             exp.add_scalar_dict(losses, step=step)
 
-    if (step % 10000 == 0) and step > 0:
+    if (step % 5000 == 0) and step > 0:
         save_name = os.path.join(output_dir, 'faster_rcnn_{}.h5'.format(step))
         network.save_net(save_name, net)
         print('save model: {}'.format(save_name))
     if step in lr_decay_steps:
         lr *= lr_decay
         # optimizer = torch.optim.SGD(params[8:], lr=lr, momentum=momentum, weight_decay=weight_decay)
-        optimizer = torch.optim.SGD(params[32:36] + params[40:], lr=lr, momentum=momentum, weight_decay=weight_decay)
+        optimizer = torch.optim.SGD(params[8:36] + params[40:], lr=lr, momentum=momentum, weight_decay=weight_decay)
 
     if re_cnt:
         tp, tf, fg, bg = 0., 0., 0, 0
