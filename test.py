@@ -20,7 +20,7 @@ imdb_name = 'voc_2007_test'
 cfg_file = 'experiments/cfgs/faster_rcnn_end2end.yml'
 # trained_model = 'models/demo/VGGnet_fast_rcnn_iter_70000.h5'
 # trained_model = 'models/demo/VGGnet_fast_rcnn_iter_70000.h5'
-trained_model = 'models/saved_model6/faster_rcnn_10000.h5'
+trained_model = 'models/saved_model_RNN_2_lr1_8_58_div2_rpn/faster_rcnn_60000.h5'
 
 rand_seed = 1024
 
@@ -66,7 +66,7 @@ def im_detect(net, image):
         [[im_data.shape[1], im_data.shape[2], im_scales[0]]],
         dtype=np.float32)
 
-    cls_prob, bbox_pred, rois = net(im_data, im_info)
+    cls_prob, bbox_pred, rois = net(im_data, im_info, use_RNN_model=True, max_iter=2)
     scores = cls_prob.data.cpu().numpy()
     boxes = rois.data.cpu().numpy()[:, 1:5] / im_info[0][2]
 
