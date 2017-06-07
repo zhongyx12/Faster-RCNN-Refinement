@@ -196,9 +196,9 @@ class FasterRCNN(nn.Module):
         self.fc7 = FC(4096, 4096)
         self.score_fc = FC(4096, self.n_classes, relu=False)
         self.bbox_fc = FC(4096, self.n_classes * 4, relu=False)
-        self.lstm = nn.LSTM(4096, 1024, 1)
-        self.score_RNN_fc = FC(1024, self.n_classes, relu=False)
-        self.bbox_RNN_fc = FC(1024, self.n_classes * 4, relu=False)
+        self.lstm = nn.LSTM(4096, 512, 1)
+        self.score_RNN_fc = FC(512, self.n_classes, relu=False)
+        self.bbox_RNN_fc = FC(512, self.n_classes * 4, relu=False)
 
         # loss
         self.cross_entropy = None
@@ -256,8 +256,8 @@ class FasterRCNN(nn.Module):
                 x = F.dropout(x, training=self.training)
                 x = torch.unsqueeze(x, 0)
                 if it == 0:
-                    prev_h = Variable(torch.zeros(1, rois.size(0), 1024), requires_grad=False).cuda()
-                    prev_c = Variable(torch.zeros(1, rois.size(0), 1024), requires_grad=False).cuda()
+                    prev_h = Variable(torch.zeros(1, rois.size(0), 512), requires_grad=False).cuda()
+                    prev_c = Variable(torch.zeros(1, rois.size(0), 512), requires_grad=False).cuda()
                     hiddens = (prev_h, prev_c)
                 x, hiddens = self.lstm(x, hiddens)
                 x = torch.squeeze(x, 0)

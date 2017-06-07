@@ -36,7 +36,7 @@ MAX_ITER = 1
 imdb_name = 'voc_2007_trainval'
 cfg_file = 'experiments/cfgs/faster_rcnn_end2end.yml'
 pretrained_model = 'data/pretrained_model/VGG_imagenet.npy'
-output_dir = 'models/saved_model_RNN_1024_10_lr01_32_58_div1_rpn'
+output_dir = 'models/saved_model_RNN_512_3_lr01_32_58_div1_rpn'
 
 start_step = 0
 end_step = 100000
@@ -115,7 +115,7 @@ t.tic()
 
 use_last_loss_only = False
 use_RNN_model = True
-max_iter = 10
+max_iter = 3
 
 for step in range(start_step, end_step+1):
 
