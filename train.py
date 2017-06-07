@@ -36,7 +36,7 @@ MAX_ITER = 1
 imdb_name = 'voc_2007_trainval'
 cfg_file = 'experiments/cfgs/faster_rcnn_end2end.yml'
 pretrained_model = 'data/pretrained_model/VGG_imagenet.npy'
-output_dir = 'models/saved_model_RNN_1024_10_lr01_8_58_div1_rpn'
+output_dir = 'models/saved_model_RNN_1024_10_lr01_32_58_div1_rpn'
 
 start_step = 0
 end_step = 100000
@@ -88,7 +88,7 @@ net.train()
 params = list(net.parameters())
 # optimizer = torch.optim.Adam(params[-8:], lr=lr)
 # optimizer = torch.optim.SGD(params[8:], lr=lr, momentum=momentum, weight_decay=weight_decay)
-optimizer = torch.optim.SGD(params[8:36] + params[40:], lr=lr, momentum=momentum, weight_decay=weight_decay)
+optimizer = torch.optim.SGD(params[32:36] + params[40:], lr=lr, momentum=momentum, weight_decay=weight_decay)
 
 if not os.path.exists(output_dir):
     os.mkdir(output_dir)
@@ -226,7 +226,7 @@ for step in range(start_step, end_step+1):
     if step in lr_decay_steps:
         lr *= lr_decay
         # optimizer = torch.optim.SGD(params[8:], lr=lr, momentum=momentum, weight_decay=weight_decay)
-        optimizer = torch.optim.SGD(params[8:36] + params[40:], lr=lr, momentum=momentum, weight_decay=weight_decay)
+        optimizer = torch.optim.SGD(params[32:36] + params[40:], lr=lr, momentum=momentum, weight_decay=weight_decay)
 
     if re_cnt:
         tp, tf, fg, bg = 0., 0., 0, 0
