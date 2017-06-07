@@ -36,7 +36,7 @@ MAX_ITER = 1
 imdb_name = 'voc_2007_trainval'
 cfg_file = 'experiments/cfgs/faster_rcnn_end2end.yml'
 pretrained_model = 'data/pretrained_model/VGG_imagenet.npy'
-output_dir = 'models/saved_model_RNN_2_lr1_8_58_div2_rpn'
+output_dir = 'models/saved_model_RNN_512_3_lr01_8_58_div1_rpn'
 
 start_step = 0
 end_step = 100000
@@ -115,7 +115,7 @@ t.tic()
 
 use_last_loss_only = False
 use_RNN_model = True
-max_iter = 2
+max_iter = 3
 
 for step in range(start_step, end_step+1):
 
@@ -136,7 +136,7 @@ for step in range(start_step, end_step+1):
         prev_cls_prob, prev_bbox_pred, prev_rois = net(im_data, im_info, gt_boxes, gt_ishard, 
             dontcare_areas, prev_cls_prob, prev_bbox_pred, prev_rois, use_last_loss_only,
             use_RNN_model, max_iter)
-        loss = net.loss
+        loss = net.loss + net.rpn.loss
 
         if _DEBUG:
             tp += float(net.tp)
@@ -156,7 +156,7 @@ for step in range(start_step, end_step+1):
             # forward
             prev_cls_prob, prev_bbox_pred, prev_rois = net(im_data, im_info, gt_boxes, gt_ishard, 
                 dontcare_areas, prev_cls_prob, prev_bbox_pred, prev_rois, use_last_loss_only)
-            loss = net.loss / 2. + net.rpn.loss
+            loss = net.loss + net.rpn.loss
 
             if _DEBUG:
                 tp += float(net.tp)
