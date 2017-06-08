@@ -115,7 +115,7 @@ t.tic()
 
 use_last_loss_only = False
 use_RNN_model = True
-max_iter = 7
+max_iter = 5
 
 for step in range(start_step, end_step+1):
 
