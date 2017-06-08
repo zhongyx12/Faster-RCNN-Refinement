@@ -136,7 +136,7 @@ for step in range(start_step, end_step+1):
         prev_cls_prob, prev_bbox_pred, prev_rois = net(im_data, im_info, gt_boxes, gt_ishard, 
             dontcare_areas, prev_cls_prob, prev_bbox_pred, prev_rois, use_last_loss_only,
             use_RNN_model, max_iter)
-        loss = net.loss + net.rpn.loss
+        loss = net.loss
 
         if _DEBUG:
             tp += float(net.tp)
